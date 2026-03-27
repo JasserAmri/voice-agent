@@ -25,11 +25,19 @@ export const config = {
   mcpBearerToken: required("MCP_BEARER_TOKEN"),
   port: parseInt(process.env.PORT || "3000", 10),
 
-  // ElevenLabs TTS
+  // Cartesia TTS (replaces ElevenLabs)
+  cartesiaApiKey: process.env.CARTESIA_API_KEY || "",
+
+  // ElevenLabs TTS (legacy — kept for reference)
   elevenlabsApiKey: process.env.ELEVENLABS_API_KEY || "",
 
   // Twilio
   twilioAccountSid: process.env.TWILIO_ACCOUNT_SID || "",
   twilioAuthToken: process.env.TWILIO_AUTH_TOKEN || "",
   twilioPhoneNumber: process.env.TWILIO_PHONE_NUMBER || "",
+
+  // LiveKit (for future real-time voice)
+  livekitUrl: process.env.LIVEKIT_URL || "",
+  livekitApiKey: process.env.LIVEKIT_API_KEY || "",
+  livekitApiSecret: process.env.LIVEKIT_API_SECRET || "",
 };

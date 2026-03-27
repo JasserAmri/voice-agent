@@ -31,8 +31,10 @@ async function start() {
   }
 
   // Log enabled integrations
-  if (config.elevenlabsApiKey) {
-    console.log("[Server] ElevenLabs TTS enabled");
+  if (config.cartesiaApiKey) {
+    console.log("[Server] Cartesia TTS enabled (Sonic-2)");
+  } else if (config.elevenlabsApiKey) {
+    console.log("[Server] ElevenLabs TTS enabled (legacy)");
   }
   if (config.twilioAccountSid) {
     console.log(`[Server] Twilio enabled — number: ${config.twilioPhoneNumber}`);

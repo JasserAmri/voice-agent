@@ -150,10 +150,10 @@ class MetricsStore {
     const totalMcpErrors = Array.from(this.mcpTools.values()).reduce((s, t) => s + t.errors, 0);
 
     // Estimated costs
-    // Gemini Flash Lite via OpenRouter: ~$0.075/1M input, ~$0.30/1M output
-    const llmCost = (this.llm.promptTokens * 0.075 + this.llm.completionTokens * 0.30) / 1_000_000;
-    // ElevenLabs: free tier, but ~$0.30/1K chars on paid
-    const ttsCost = (this.tts.totalChars / 1000) * 0.30;
+    // Azure GPT-4.1 Nano: ~$0.10/1M input, ~$0.40/1M output
+    const llmCost = (this.llm.promptTokens * 0.10 + this.llm.completionTokens * 0.40) / 1_000_000;
+    // Cartesia Sonic-2: ~$0.10/1K chars on paid (free tier: 500 chars/day)
+    const ttsCost = (this.tts.totalChars / 1000) * 0.10;
     // Twilio: ~$0.022/min voice + ~$0.01/min STT, estimate ~30s per turn
     const twilioCost = this.twilio.totalTurns * (0.022 + 0.01) * 0.5;
     // SMS: ~$0.0079 per outbound SMS

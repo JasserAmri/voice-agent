@@ -1,24 +1,10 @@
 import { config } from "./config.js";
 import { metrics } from "./metrics.js";
 
-const ELEVENLABS_API = "https://api.elevenlabs.io/v1";
+const CARTESIA_API = "https://api.cartesia.ai/tts/bytes";
 
-// Sarah — mature, reassuring, confident (premade, works on free tier)
-const DEFAULT_VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
-
-interface VoiceSettings {
-  stability: number;
-  similarity_boost: number;
-  style: number;
-  use_speaker_boost: boolean;
-}
-
-const VOICE_SETTINGS: VoiceSettings = {
-  stability: 0.5,
-  similarity_boost: 0.75,
-  style: 0.4,
-  use_speaker_boost: true,
-};
+// Cartesia "British Lady" — warm, professional hotel concierge voice
+const DEFAULT_VOICE_ID = "79a125e8-cd45-4c13-8a67-188112f4dd22";
 
 export async function textToSpeech(
   text: string,
@@ -26,27 +12,32 @@ export async function textToSpeech(
 ): Promise<Buffer> {
   const start = Date.now();
 
-  const res = await fetch(
-    `${ELEVENLABS_API}/text-to-speech/${voiceId}`,
-    {
-      method: "POST",
-      headers: {
-        "xi-api-key": config.elevenlabsApiKey,
-        "Content-Type": "application/json",
-        Accept: "audio/mpeg",
+  const res = await fetch(CARTESIA_API, {
+    method: "POST",
+    headers: {
+      "X-API-Key": config.cartesiaApiKey,
+      "Cartesia-Version": "2024-06-10",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model_id: "sonic-2",
+      transcript: text,
+      voice: {
+        mode: "id",
+        id: voiceId,
       },
-      body: JSON.stringify({
-        text,
-        model_id: "eleven_multilingual_v2",
-        voice_settings: VOICE_SETTINGS,
-      }),
-    }
-  );
+      output_format: {
+        container: "mp3",
+        encoding: "mp3",
+        sample_rate: 24000,
+      },
+    }),
+  });
 
   if (!res.ok) {
     metrics.trackTtsError();
     const err = await res.text();
-    throw new Error(`ElevenLabs TTS failed (${res.status}): ${err}`);
+    throw new Error(`Cartesia TTS failed (${res.status}): ${err}`);
   }
 
   const arrayBuffer = await res.arrayBuffer();

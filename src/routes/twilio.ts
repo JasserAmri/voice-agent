@@ -12,8 +12,8 @@ twilioRouter.use(express.urlencoded({ extended: false }));
 const audioCache = new Map<string, Buffer>();
 const pendingResponses = new Map<string, { reply: string; audioId?: string }>();
 
-// Royalty-free hold music URL (gentle piano loop)
-const HOLD_MUSIC_URL = "http://com.twilio.sounds.music.s3.amazonaws.com/MARKOVICHAMP-B8.mp3";
+// Royalty-free hold music URL
+const HOLD_MUSIC_URL = "http://com.twilio.sounds.music.s3.amazonaws.com/ClockworkWaltz.mp3";
 
 /**
  * POST /incoming — Twilio hits this when someone calls.
@@ -31,7 +31,7 @@ twilioRouter.post("/incoming", (req, res) => {
   <Gather input="speech" action="/api/twilio/gather" method="POST"
     speechTimeout="auto" language="en-US" enhanced="true">
   </Gather>
-  <Say voice="Polly.Joanna">I didn't catch that. Goodbye!</Say>
+  <Say voice="Polly.Joanna">I did not catch that. Goodbye!</Say>
 </Response>`;
   res.type("text/xml").send(twiml);
 });
@@ -48,7 +48,7 @@ twilioRouter.post("/gather", async (req, res) => {
     console.log(`[Twilio] No speech detected for call ${callSid}`);
     res.type("text/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Joanna">I didn't catch that. Could you repeat?</Say>
+  <Say voice="Polly.Joanna">I did not catch that. Could you repeat?</Say>
   <Gather input="speech" action="/api/twilio/gather" method="POST"
     speechTimeout="auto" language="en-US" enhanced="true">
   </Gather>
@@ -63,12 +63,10 @@ twilioRouter.post("/gather", async (req, res) => {
   // Start processing in background
   processInBackground(callSid, speechResult, req);
 
-  // Immediately respond with filler + hold music while we process
-  // The /wait endpoint will poll for the response and redirect when ready
+  // Immediately respond with filler then poll /wait for the response
   res.type("text/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Joanna">One moment please.</Say>
-  <Play>${HOLD_MUSIC_URL}</Play>
+  <Say voice="Polly.Joanna">One moment please, let me check that for you.</Say>
   <Redirect method="POST">/api/twilio/wait/${callSid}</Redirect>
 </Response>`);
 });
@@ -85,43 +83,26 @@ async function processInBackground(callSid: string, speechResult: string, req: a
     // Truncate very long responses for voice
     const truncated = truncateForVoice(reply);
 
-    // Generate TTS audio
+    // Generate TTS audio (Cartesia primary, falls back to Polly)
     let audioId: string | undefined;
-    if (config.elevenlabsApiKey) {
+    if (config.cartesiaApiKey) {
       try {
         const audioBuffer = await textToSpeech(truncated);
         audioId = `${callSid}-${Date.now()}`;
         audioCache.set(audioId, audioBuffer);
         setTimeout(() => audioCache.delete(audioId!), 120_000);
       } catch (ttsErr) {
-        console.error("[Twilio] ElevenLabs TTS failed:", ttsErr);
+        console.error("[Twilio] Cartesia TTS failed:", ttsErr);
       }
     }
 
     // Store response
     pendingResponses.set(callSid, { reply: truncated, audioId });
 
-    // Use Twilio REST API to redirect the live call to the response
-    const baseUrl = getBaseUrl(req);
-    try {
-      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${config.twilioAccountSid}/Calls/${callSid}.json`;
-      const auth = Buffer.from(`${config.twilioAccountSid}:${config.twilioAuthToken}`).toString("base64");
-      await fetch(twilioUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${auth}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: `Url=${encodeURIComponent(baseUrl + "/api/twilio/respond/" + callSid)}&Method=POST`,
-      });
-      console.log(`[Twilio] Redirected call ${callSid} to response`);
-    } catch (redirectErr) {
-      console.error("[Twilio] Failed to redirect call:", redirectErr);
-      // Response will still be available via /wait polling fallback
-    }
+    console.log(`[Twilio] Response ready for ${callSid}, waiting for /wait poll`);
   } catch (err) {
     console.error("[Twilio] Processing error:", err);
-    pendingResponses.set(callSid, { reply: "I'm sorry, something went wrong. Could you try again?" });
+    pendingResponses.set(callSid, { reply: "I am sorry, something went wrong. Could you try again?" });
   }
 }
 
@@ -135,13 +116,13 @@ twilioRouter.post("/wait/:callSid", (req, res) => {
   const pending = pendingResponses.get(callSid);
 
   if (pending) {
-    // Response is ready — redirect to it
+    console.log(`[Twilio] /wait — response ready for ${callSid}, redirecting to /respond`);
     res.type("text/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Redirect method="POST">/api/twilio/respond/${callSid}</Redirect>
 </Response>`);
   } else {
-    // Still processing — play more hold music and check again
+    console.log(`[Twilio] /wait — still processing ${callSid}, playing more hold music`);
     res.type("text/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${HOLD_MUSIC_URL}</Play>
@@ -155,13 +136,14 @@ twilioRouter.post("/wait/:callSid", (req, res) => {
  */
 twilioRouter.post("/respond/:callSid", (req, res) => {
   const { callSid } = req.params;
+  console.log(`[Twilio] /respond hit for ${callSid}`);
   const pending = pendingResponses.get(callSid);
   pendingResponses.delete(callSid);
 
   if (!pending) {
     res.type("text/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Joanna">I'm sorry, I lost track of your question. Could you repeat it?</Say>
+  <Say voice="Polly.Joanna">I am sorry, I lost track of your question. Could you repeat it?</Say>
   <Gather input="speech" action="/api/twilio/gather" method="POST"
     speechTimeout="auto" language="en-US" enhanced="true">
   </Gather>
