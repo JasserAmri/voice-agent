@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: voice-agent
+    runtime: node
+    buildCommand: npm install
+    startCommand: npx tsx src/index.ts
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LLM_PROVIDER
+        sync: false
+      - key: AZURE_OPENAI_ENDPOINT
+        sync: false
+      - key: AZURE_OPENAI_API_KEY
+        sync: false
+      - key: AZURE_OPENAI_DEPLOYMENT
+        sync: false
+      - key: AZURE_OPENAI_API_VERSION
+        sync: false
+      - key: MCP_SERVER_URL
+        sync: false
+      - key: MCP_BEARER_TOKEN
+        sync: false
+      - key: CARTESIA_API_KEY
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE_NUMBER
+        sync: false
