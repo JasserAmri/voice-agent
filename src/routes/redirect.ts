@@ -2,7 +2,7 @@
 const cache = new Map<string, string>();
 
 /**
- * Shorten a URL using is.gd free API.
+ * Shorten a URL using TinyURL free API.
  * Falls back to the original URL if the service is unavailable.
  */
 export async function shortenUrl(longUrl: string): Promise<string> {
@@ -12,11 +12,11 @@ export async function shortenUrl(longUrl: string): Promise<string> {
 
   try {
     const res = await fetch(
-      `https://is.gd/create.php?format=simple&url=${encodeURIComponent(longUrl)}`
+      `https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`
     );
 
     if (!res.ok) {
-      console.error(`[Shortener] is.gd returned ${res.status}`);
+      console.error(`[Shortener] TinyURL returned ${res.status}`);
       return longUrl;
     }
 
