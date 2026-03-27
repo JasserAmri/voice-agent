@@ -8,8 +8,19 @@ function required(name: string): string {
 }
 
 export const config = {
+  // LLM — Azure OpenAI (primary) or OpenRouter (fallback)
+  llmProvider: (process.env.LLM_PROVIDER || "azure") as "azure" | "openrouter",
+
+  // Azure OpenAI
+  azureEndpoint: process.env.AZURE_OPENAI_ENDPOINT || "",
+  azureApiKey: process.env.AZURE_OPENAI_API_KEY || "",
+  azureDeployment: process.env.AZURE_OPENAI_DEPLOYMENT || "",
+  azureApiVersion: process.env.AZURE_OPENAI_API_VERSION || "2025-01-01-preview",
+
+  // OpenRouter (fallback)
   openrouterApiKey: process.env.OPENROUTER_API_KEY || "",
   openrouterModel: process.env.OPENROUTER_MODEL || "google/gemma-3-27b-it:free",
+
   mcpServerUrl: required("MCP_SERVER_URL"),
   mcpBearerToken: required("MCP_BEARER_TOKEN"),
   port: parseInt(process.env.PORT || "3000", 10),
