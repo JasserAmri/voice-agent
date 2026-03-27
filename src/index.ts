@@ -5,6 +5,8 @@ import { fileURLToPath } from "url";
 import { config } from "./config.js";
 import { connectMcp, getToolCount } from "./mcp-client.js";
 import { apiRouter } from "./routes/api.js";
+import { ttsRouter } from "./routes/tts.js";
+import { twilioRouter } from "./routes/twilio.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -13,6 +15,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "..", "public")));
 app.use("/api", apiRouter);
+app.use("/api", ttsRouter);
+app.use("/api/twilio", twilioRouter);
 
 async function start() {
   // Connect to MCP server
@@ -22,6 +26,16 @@ async function start() {
   } catch (err) {
     console.error("[Server] MCP connection failed:", (err as Error).message);
     console.error("[Server] Starting without MCP — tool calls will fail");
+  }
+
+  // Log enabled integrations
+  if (config.elevenlabsApiKey) {
+    console.log("[Server] ElevenLabs TTS enabled");
+  }
+  if (config.twilioAccountSid) {
+    console.log(`[Server] Twilio enabled — number: ${config.twilioPhoneNumber}`);
+    console.log(`[Server] Twilio webhook: POST http://localhost:${config.port}/api/twilio/incoming`);
+    console.log(`[Server] Use ngrok to expose: ngrok http ${config.port}`);
   }
 
   app.listen(config.port, () => {

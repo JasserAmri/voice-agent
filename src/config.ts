@@ -13,4 +13,12 @@ export const config = {
   mcpServerUrl: required("MCP_SERVER_URL"),
   mcpBearerToken: required("MCP_BEARER_TOKEN"),
   port: parseInt(process.env.PORT || "3000", 10),
+
+  // ElevenLabs TTS
+  elevenlabsApiKey: process.env.ELEVENLABS_API_KEY || "",
+
+  // Twilio
+  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID || "",
+  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN || "",
+  twilioPhoneNumber: process.env.TWILIO_PHONE_NUMBER || "",
 };

@@ -49,64 +49,102 @@ if (SpeechRecognition) {
   addSystemMessage("Speech recognition not supported. Use Chrome/Edge, or type below.");
 }
 
-// Speech Synthesis — pick the best available voice
+// TTS — use ElevenLabs server-side, fallback to browser speech synthesis
+let useElevenLabs = true; // will be set to false if first call fails
+let currentAudio = null;
+
+async function speak(text) {
+  // Stop any playing audio
+  stopSpeaking();
+
+  micBtn.disabled = true;
+
+  if (useElevenLabs) {
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!res.ok) throw new Error(`TTS failed: ${res.status}`);
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      currentAudio = new Audio(url);
+      currentAudio.onended = () => {
+        micBtn.disabled = false;
+        URL.revokeObjectURL(url);
+        currentAudio = null;
+      };
+      currentAudio.onerror = () => {
+        micBtn.disabled = false;
+        URL.revokeObjectURL(url);
+        currentAudio = null;
+      };
+      currentAudio.play();
+      return;
+    } catch (err) {
+      console.warn("[TTS] ElevenLabs failed, falling back to browser:", err.message);
+      useElevenLabs = false;
+    }
+  }
+
+  // Fallback: browser speech synthesis
+  speakBrowser(text);
+}
+
+function stopSpeaking() {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+  synth.cancel();
+}
+
+// Browser speech synthesis fallback
 const synth = window.speechSynthesis;
 let bestVoice = null;
 
-// Preferred voices ranked by natural quality (best first)
 const PREFERRED_VOICES = [
-  "Microsoft Jenny",    // Windows 11 neural voice (very natural)
-  "Microsoft Aria",     // Windows 11 neural voice
-  "Microsoft Guy",      // Windows 11 neural voice
-  "Microsoft Zira",     // Windows decent quality
+  "Microsoft Jenny",
+  "Microsoft Aria",
+  "Microsoft Guy",
+  "Microsoft Zira",
   "Google UK English Female",
   "Google UK English Male",
   "Google US English",
-  "Samantha",           // macOS natural voice
-  "Karen",              // macOS natural voice
-  "Daniel",             // macOS natural voice
+  "Samantha",
+  "Karen",
+  "Daniel",
 ];
 
 function pickBestVoice() {
   const voices = synth.getVoices();
   if (voices.length === 0) return;
-
-  // Try preferred voices first
   for (const pref of PREFERRED_VOICES) {
     const match = voices.find(v => v.name.includes(pref));
     if (match) {
       bestVoice = match;
-      console.log("[TTS] Selected voice:", match.name, match.lang);
+      console.log("[TTS] Browser fallback voice:", match.name);
       return;
     }
   }
-
-  // Fallback: pick first English voice that isn't "default"
   const english = voices.find(v => v.lang.startsWith("en") && !v.name.includes("default"));
-  if (english) {
-    bestVoice = english;
-    console.log("[TTS] Fallback voice:", english.name, english.lang);
-    return;
-  }
-
-  console.log("[TTS] Using default system voice");
+  if (english) bestVoice = english;
 }
 
-// Voices load async in some browsers
 synth.onvoiceschanged = pickBestVoice;
 pickBestVoice();
 
-function speak(text) {
+function speakBrowser(text) {
   synth.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
   if (bestVoice) utterance.voice = bestVoice;
-  utterance.rate = 0.95;   // Slightly slower for clarity
-  utterance.pitch = 1.05;  // Slightly higher for warmth
-
-  micBtn.disabled = true;
+  utterance.rate = 0.95;
+  utterance.pitch = 1.05;
   utterance.onend = () => { micBtn.disabled = false; };
   utterance.onerror = () => { micBtn.disabled = false; };
-
   synth.speak(utterance);
 }
 
@@ -117,7 +155,7 @@ function startListening() {
   micBtn.classList.add("listening");
   micBtn.textContent = "Listening...";
   statusBadge.textContent = "Listening...";
-  synth.cancel();
+  stopSpeaking();
   recognition.start();
 }
 
@@ -202,7 +240,7 @@ async function sendMessage(text) {
     addSystemMessage("Connection error: " + err.message);
   } finally {
     sendBtn.disabled = false;
-    micBtn.disabled = false;
+    if (!currentAudio) micBtn.disabled = false;
     statusBadge.textContent = "Ready";
     statusBadge.className = "status connected";
   }
