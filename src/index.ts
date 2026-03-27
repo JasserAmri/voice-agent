@@ -21,13 +21,21 @@ app.use("/api", metricsRouter);
 app.use("/api/twilio", twilioRouter);
 
 async function start() {
-  // Connect to MCP server
-  try {
-    await connectMcp();
-    console.log(`[Server] MCP connected, ${getToolCount()} tools available`);
-  } catch (err) {
-    console.error("[Server] MCP connection failed:", (err as Error).message);
-    console.error("[Server] Starting without MCP — tool calls will fail");
+  // Connect to MCP server (retry up to 3 times)
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await connectMcp();
+      console.log(`[Server] MCP connected, ${getToolCount()} tools available`);
+      break;
+    } catch (err) {
+      console.error(`[Server] MCP connection attempt ${attempt}/3 failed:`, (err as Error).message);
+      if (attempt < 3) {
+        console.log("[Server] Retrying in 2 seconds...");
+        await new Promise(r => setTimeout(r, 2000));
+      } else {
+        console.error("[Server] Starting without MCP — will retry on first tool call");
+      }
+    }
   }
 
   // Log enabled integrations

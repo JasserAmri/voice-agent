@@ -14,6 +14,7 @@ interface McpTool {
 
 let client: Client;
 let tools: McpTool[] = [];
+let connected = false;
 
 export async function connectMcp(): Promise<void> {
   const url = new URL(config.mcpServerUrl);
@@ -43,7 +44,15 @@ export async function connectMcp(): Promise<void> {
   // Discover and cache tools
   const result = await client.listTools();
   tools = result.tools as McpTool[];
+  connected = true;
   console.log(`[MCP] Discovered ${tools.length} tools:`, tools.map((t) => t.name).join(", "));
+}
+
+async function ensureConnected(): Promise<void> {
+  if (!connected || tools.length === 0) {
+    console.log("[MCP] Reconnecting...");
+    await connectMcp();
+  }
 }
 
 export function getToolsAsOpenAIFormat(): ChatCompletionTool[] {
@@ -58,6 +67,7 @@ export function getToolsAsOpenAIFormat(): ChatCompletionTool[] {
 }
 
 export async function callTool(name: string, args: Record<string, unknown>): Promise<string> {
+  await ensureConnected();
   console.log(`[MCP] Calling tool: ${name}`, JSON.stringify(args));
   const start = Date.now();
   let error = false;
