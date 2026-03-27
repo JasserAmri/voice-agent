@@ -26,6 +26,11 @@ interface McpToolMetrics {
   errors: number;
 }
 
+interface SmsMetrics {
+  sent: number;
+  failed: number;
+}
+
 interface TwilioMetrics {
   totalCalls: number;
   totalTurns: number;
@@ -55,6 +60,11 @@ class MetricsStore {
   };
 
   mcpTools: Map<string, McpToolMetrics> = new Map();
+
+  sms: SmsMetrics = {
+    sent: 0,
+    failed: 0,
+  };
 
   twilio: TwilioMetrics = {
     totalCalls: 0,
@@ -103,6 +113,11 @@ class MetricsStore {
     if (error) tool.errors++;
   }
 
+  trackSms(success: boolean) {
+    if (success) this.sms.sent++;
+    else this.sms.failed++;
+  }
+
   trackTwilioCall() {
     this.twilio.totalCalls++;
   }
@@ -141,6 +156,8 @@ class MetricsStore {
     const ttsCost = (this.tts.totalChars / 1000) * 0.30;
     // Twilio: ~$0.022/min voice + ~$0.01/min STT, estimate ~30s per turn
     const twilioCost = this.twilio.totalTurns * (0.022 + 0.01) * 0.5;
+    // SMS: ~$0.0079 per outbound SMS
+    const smsCost = this.sms.sent * 0.0079;
 
     return {
       uptime: Math.round((Date.now() - this.startedAt) / 1000),
@@ -163,8 +180,12 @@ class MetricsStore {
         ...this.twilio,
         estimatedCost: `$${twilioCost.toFixed(4)}`,
       },
+      sms: {
+        ...this.sms,
+        estimatedCost: `$${smsCost.toFixed(4)}`,
+      },
       sessions: this.sessions,
-      totalEstimatedCost: `$${(llmCost + ttsCost + twilioCost).toFixed(4)}`,
+      totalEstimatedCost: `$${(llmCost + ttsCost + twilioCost + smsCost).toFixed(4)}`,
     };
   }
 }

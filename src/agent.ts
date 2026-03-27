@@ -1,7 +1,11 @@
 import { chatCompletion } from "./llm.js";
 import { getToolsAsOpenAIFormat, callTool } from "./mcp-client.js";
 import { getHistory, appendMessage } from "./conversation.js";
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import { sendSms } from "./sms.js";
+import { shortenUrl } from "./routes/redirect.js";
+import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions";
+
+const CHATBOT_URL = "https://cdn-next.quicktext.im/mobile-view.html?license=9q576-HQKW";
 
 const SYSTEM_PROMPT = `You are a friendly hotel concierge voice assistant for QuickText. You help guests with hotel information, reservations, amenities, and local recommendations.
 
@@ -14,6 +18,17 @@ TOOL WORKFLOW — follow these steps for availability/booking requests:
 4. Then call "get-availability" with the clientId from step 3, plus checkIn date, teamId "4577", nights, adults, rooms.
 5. NEVER say you cannot check availability. You CAN — just follow steps 3-4 above.
 6. If you need dates or number of guests and the caller hasn't said, ask for those specific details.
+
+SMS BOOKING LINKS:
+- After presenting room options, ALWAYS offer: "Would you like me to send you the booking link by text message?"
+- When the guest says yes, ask for their phone number and REPEAT IT BACK to confirm: "I'll send it to plus three three six one two three four five six seven eight. Is that correct?"
+- Once confirmed, use the "send_booking_sms" tool with their phone number and the booking URL from the availability results.
+- Each room in the availability results has a booking URL. Use the one for the room the guest chose.
+- If the guest is calling via phone (session starts with "twilio-"), you already know their number from the call. Offer: "I can send the link to the number you're calling from. Shall I?"
+
+TALK TO STAFF / CHATBOT:
+- If the guest says they want to talk to someone, chat with staff, speak to a person, or get human help — use the "send_chatbot_link" tool to send them a link to the hotel's live chat.
+- Ask for their phone number first (same confirmation flow as above).
 
 IMPORTANT — BE PROACTIVE:
 - When a guest asks a question, ALWAYS use your tools immediately. Do NOT ask "would you like me to check?" — just check.
@@ -32,7 +47,75 @@ CRITICAL — your responses will be SPOKEN ALOUD, so you must follow these voice
 - End with a brief follow-up when appropriate: "Would you like me to book that?" or "Can I help with anything else?"
 - If you don't have the answer, say so briefly and offer to help differently.`;
 
-const MAX_TOOL_ITERATIONS = 8;
+const MAX_TOOL_ITERATIONS = 10;
+
+// Local tools that the agent can call (not MCP)
+const LOCAL_TOOLS: ChatCompletionTool[] = [
+  {
+    type: "function",
+    function: {
+      name: "send_booking_sms",
+      description: "Send a booking link to the guest via SMS. Shortens the URL automatically. Always confirm the phone number with the guest before calling this.",
+      parameters: {
+        type: "object",
+        properties: {
+          phone: { type: "string", description: "Guest phone number with country code, e.g. +33612345678" },
+          bookingUrl: { type: "string", description: "The full booking URL from the availability results" },
+          roomName: { type: "string", description: "Name of the room being booked" },
+        },
+        required: ["phone", "bookingUrl", "roomName"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "send_chatbot_link",
+      description: "Send the hotel's live chat link to the guest via SMS so they can chat with staff. Always confirm the phone number first.",
+      parameters: {
+        type: "object",
+        properties: {
+          phone: { type: "string", description: "Guest phone number with country code, e.g. +33612345678" },
+        },
+        required: ["phone"],
+      },
+    },
+  },
+];
+
+// The base URL for shortening — set dynamically from first request
+let serverBaseUrl = "http://localhost:3000";
+
+export function setServerBaseUrl(url: string) {
+  serverBaseUrl = url;
+}
+
+async function handleLocalTool(name: string, args: Record<string, any>): Promise<string> {
+  if (name === "send_booking_sms") {
+    const { phone, bookingUrl, roomName } = args;
+    const shortUrl = shortenUrl(bookingUrl, serverBaseUrl);
+    const body = `Ki Space Val d'Europe - Book your ${roomName}:\n${shortUrl}`;
+    const result = await sendSms(phone, body);
+    if (result.success) {
+      return JSON.stringify({ success: true, message: `SMS sent to ${phone} with booking link` });
+    }
+    return JSON.stringify({ success: false, error: result.error });
+  }
+
+  if (name === "send_chatbot_link") {
+    const { phone } = args;
+    const body = `Ki Space Val d'Europe - Chat with our team:\n${CHATBOT_URL}`;
+    const result = await sendSms(phone, body);
+    if (result.success) {
+      return JSON.stringify({ success: true, message: `Chatbot link sent to ${phone}` });
+    }
+    return JSON.stringify({ success: false, error: result.error });
+  }
+
+  return JSON.stringify({ error: `Unknown local tool: ${name}` });
+}
+
+const LOCAL_TOOL_NAMES = new Set(LOCAL_TOOLS.map(t => t.function.name));
 
 export async function processMessage(sessionId: string, userText: string): Promise<string> {
   const history = getHistory(sessionId);
@@ -45,7 +128,8 @@ export async function processMessage(sessionId: string, userText: string): Promi
   // Add user message
   appendMessage(sessionId, { role: "user", content: userText });
 
-  const tools = getToolsAsOpenAIFormat();
+  // Combine MCP tools + local tools
+  const tools = [...getToolsAsOpenAIFormat(), ...LOCAL_TOOLS];
 
   for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
     const choice = await chatCompletion(getHistory(sessionId), tools);
@@ -69,7 +153,14 @@ export async function processMessage(sessionId: string, userText: string): Promi
       let result: string;
       try {
         const args = JSON.parse(tc.function.arguments);
-        result = await callTool(tc.function.name, args);
+
+        if (LOCAL_TOOL_NAMES.has(tc.function.name)) {
+          // Handle local tools
+          result = await handleLocalTool(tc.function.name, args);
+        } else {
+          // Handle MCP tools
+          result = await callTool(tc.function.name, args);
+        }
       } catch (err) {
         result = `Error calling tool: ${(err as Error).message}`;
         console.error(`[Agent] Tool call error:`, err);

@@ -311,6 +311,10 @@ async function refreshDashboard() {
     document.getElementById("d-twilio-turns").textContent = m.twilio.totalTurns;
     document.getElementById("d-twilio-cost").textContent = m.twilio.estimatedCost;
 
+    document.getElementById("d-sms-sent").textContent = m.sms.sent;
+    document.getElementById("d-sms-failed").textContent = m.sms.failed;
+    document.getElementById("d-sms-cost").textContent = m.sms.estimatedCost;
+
     document.getElementById("d-sessions-browser").textContent = m.sessions.browser;
     document.getElementById("d-sessions-phone").textContent = m.sessions.phone;
     document.getElementById("d-total-cost").textContent = m.totalEstimatedCost;
