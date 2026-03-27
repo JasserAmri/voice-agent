@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { processMessage, setServerBaseUrl } from "../agent.js";
+import { processMessage } from "../agent.js";
 import { metrics } from "../metrics.js";
 
 export const apiRouter = Router();
@@ -12,11 +12,6 @@ apiRouter.post("/chat", async (req, res) => {
     res.status(400).json({ error: "Missing 'text' field" });
     return;
   }
-
-  // Set base URL for URL shortening (uses ngrok URL if behind proxy)
-  const proto = req.headers["x-forwarded-proto"] || req.protocol;
-  const host = req.headers["x-forwarded-host"] || req.get("host");
-  setServerBaseUrl(`${proto}://${host}`);
 
   metrics.trackSession("browser", sessionId);
   console.log(`[API] Session ${sessionId}: "${text}"`);

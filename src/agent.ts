@@ -89,17 +89,10 @@ const LOCAL_TOOLS: ChatCompletionTool[] = [
   },
 ];
 
-// The base URL for shortening — set dynamically from first request
-let serverBaseUrl = "http://localhost:3000";
-
-export function setServerBaseUrl(url: string) {
-  serverBaseUrl = url;
-}
-
 async function handleLocalTool(name: string, args: Record<string, any>): Promise<string> {
   if (name === "send_booking_sms") {
     const { phone, bookingUrl, roomName } = args;
-    const shortUrl = shortenUrl(bookingUrl, serverBaseUrl);
+    const shortUrl = await shortenUrl(bookingUrl);
     const body = `Ki Space Val d'Europe - Book your ${roomName}:\n${shortUrl}`;
     const result = await sendSms(phone, body);
     if (result.success) {

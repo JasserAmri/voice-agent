@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { processMessage, setServerBaseUrl } from "../agent.js";
+import { processMessage } from "../agent.js";
 import { textToSpeech } from "../tts.js";
 import { config } from "../config.js";
 import { metrics } from "../metrics.js";
@@ -78,9 +78,6 @@ twilioRouter.post("/gather", async (req, res) => {
  * Then uses Twilio REST API to redirect the live call to the response.
  */
 async function processInBackground(callSid: string, speechResult: string, req: any) {
-  // Set base URL for URL shortening
-  setServerBaseUrl(getBaseUrl(req));
-
   try {
     const reply = await processMessage(`twilio-${callSid}`, speechResult);
     console.log(`[Twilio] Reply: "${reply.substring(0, 100)}..."`);

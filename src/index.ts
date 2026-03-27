@@ -8,7 +8,6 @@ import { apiRouter } from "./routes/api.js";
 import { ttsRouter } from "./routes/tts.js";
 import { twilioRouter } from "./routes/twilio.js";
 import { metricsRouter } from "./routes/metrics.js";
-import { redirectRouter } from "./routes/redirect.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -20,7 +19,6 @@ app.use("/api", apiRouter);
 app.use("/api", ttsRouter);
 app.use("/api", metricsRouter);
 app.use("/api/twilio", twilioRouter);
-app.use(redirectRouter); // /r/:code — URL shortener redirects
 
 async function start() {
   // Connect to MCP server
