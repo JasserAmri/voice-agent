@@ -1,4 +1,5 @@
 import { config } from "./config.js";
+import { metrics } from "./metrics.js";
 
 const ELEVENLABS_API = "https://api.elevenlabs.io/v1";
 
@@ -23,6 +24,8 @@ export async function textToSpeech(
   text: string,
   voiceId: string = DEFAULT_VOICE_ID
 ): Promise<Buffer> {
+  const start = Date.now();
+
   const res = await fetch(
     `${ELEVENLABS_API}/text-to-speech/${voiceId}`,
     {
@@ -41,10 +44,16 @@ export async function textToSpeech(
   );
 
   if (!res.ok) {
+    metrics.trackTtsError();
     const err = await res.text();
     throw new Error(`ElevenLabs TTS failed (${res.status}): ${err}`);
   }
 
   const arrayBuffer = await res.arrayBuffer();
-  return Buffer.from(arrayBuffer);
+  const buffer = Buffer.from(arrayBuffer);
+  const latency = Date.now() - start;
+
+  metrics.trackTts(text.length, buffer.length, latency);
+
+  return buffer;
 }

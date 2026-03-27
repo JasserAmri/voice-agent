@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { config } from "./config.js";
+import { metrics } from "./metrics.js";
 import type {
   ChatCompletionMessageParam,
   ChatCompletionTool,
@@ -25,8 +26,15 @@ export async function chatCompletion(
   }
 
   console.log(`[LLM] Calling ${config.openrouterModel} with ${messages.length} messages`);
+  const start = Date.now();
   const response = await openai.chat.completions.create(params);
+  const latency = Date.now() - start;
+
   const choice = response.choices[0];
   console.log(`[LLM] Response: finish_reason=${choice.finish_reason}, tool_calls=${choice.message.tool_calls?.length ?? 0}`);
+
+  // Track usage
+  metrics.trackLlm(response.usage as any, latency, config.openrouterModel);
+
   return choice;
 }

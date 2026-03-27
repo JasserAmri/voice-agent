@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { processMessage } from "../agent.js";
+import { metrics } from "../metrics.js";
 
 export const apiRouter = Router();
 
@@ -12,6 +13,7 @@ apiRouter.post("/chat", async (req, res) => {
     return;
   }
 
+  metrics.trackSession("browser", sessionId);
   console.log(`[API] Session ${sessionId}: "${text}"`);
 
   try {

@@ -7,6 +7,7 @@ import { connectMcp, getToolCount } from "./mcp-client.js";
 import { apiRouter } from "./routes/api.js";
 import { ttsRouter } from "./routes/tts.js";
 import { twilioRouter } from "./routes/twilio.js";
+import { metricsRouter } from "./routes/metrics.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,6 +17,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "..", "public")));
 app.use("/api", apiRouter);
 app.use("/api", ttsRouter);
+app.use("/api", metricsRouter);
 app.use("/api/twilio", twilioRouter);
 
 async function start() {

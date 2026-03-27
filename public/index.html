@@ -120,6 +120,70 @@
       50% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
     }
 
+    /* Dashboard panel */
+    #dashToggle {
+      margin-left: auto;
+      padding: 4px 12px;
+      border-radius: 12px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #dashToggle:hover { background: #1e293b; color: #e2e8f0; }
+    #dashToggle.active { background: #1e40af; color: white; border-color: #1e40af; }
+
+    #dashboard {
+      display: none;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      padding: 16px 24px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    #dashboard.visible { display: block; }
+    .dash-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .dash-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 12px 16px;
+    }
+    .dash-card h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+    .dash-card .val {
+      font-size: 20px;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+    .dash-card .sub {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    .dash-total {
+      text-align: right;
+      margin-top: 12px;
+      font-size: 14px;
+      color: #94a3b8;
+    }
+    .dash-total .cost {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fbbf24;
+    }
+
     .thinking {
       display: inline-flex;
       gap: 4px;
@@ -143,7 +207,41 @@
   <header>
     <h1>Voice Agent</h1>
     <span id="statusBadge" class="status">Initializing...</span>
+    <button id="dashToggle">Usage</button>
   </header>
+
+  <div id="dashboard">
+    <div class="dash-grid">
+      <div class="dash-card">
+        <h3>LLM (OpenRouter)</h3>
+        <div class="val" id="d-llm-tokens">0</div>
+        <div class="sub">tokens (<span id="d-llm-reqs">0</span> requests, avg <span id="d-llm-latency">0</span>ms)</div>
+        <div class="sub">Est. <span id="d-llm-cost">$0.0000</span></div>
+      </div>
+      <div class="dash-card">
+        <h3>TTS (ElevenLabs)</h3>
+        <div class="val" id="d-tts-chars">0</div>
+        <div class="sub">chars (<span id="d-tts-reqs">0</span> requests, avg <span id="d-tts-latency">0</span>ms)</div>
+        <div class="sub">Audio: <span id="d-tts-bytes">0</span> KB | Est. <span id="d-tts-cost">$0.0000</span></div>
+      </div>
+      <div class="dash-card">
+        <h3>MCP Tools</h3>
+        <div class="val" id="d-mcp-calls">0</div>
+        <div class="sub">calls (<span id="d-mcp-errors">0</span> errors)</div>
+        <div class="sub" id="d-mcp-tools"></div>
+      </div>
+      <div class="dash-card">
+        <h3>Twilio Calls</h3>
+        <div class="val" id="d-twilio-calls">0</div>
+        <div class="sub"><span id="d-twilio-turns">0</span> conversation turns</div>
+        <div class="sub">Est. <span id="d-twilio-cost">$0.0000</span></div>
+      </div>
+    </div>
+    <div class="dash-total">
+      Sessions: <span id="d-sessions-browser">0</span> browser, <span id="d-sessions-phone">0</span> phone |
+      Total est. cost: <span class="cost" id="d-total-cost">$0.0000</span>
+    </div>
+  </div>
 
   <div id="chat"></div>
 

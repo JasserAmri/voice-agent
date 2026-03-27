@@ -266,5 +266,56 @@ textInput.addEventListener("keydown", (e) => {
   }
 });
 
+// Dashboard
+const dashToggle = document.getElementById("dashToggle");
+const dashboard = document.getElementById("dashboard");
+let dashInterval = null;
+
+dashToggle.addEventListener("click", () => {
+  const visible = dashboard.classList.toggle("visible");
+  dashToggle.classList.toggle("active", visible);
+  if (visible) {
+    refreshDashboard();
+    dashInterval = setInterval(refreshDashboard, 5000);
+  } else {
+    clearInterval(dashInterval);
+    dashInterval = null;
+  }
+});
+
+async function refreshDashboard() {
+  try {
+    const res = await fetch("/api/metrics");
+    if (!res.ok) return;
+    const m = await res.json();
+
+    document.getElementById("d-llm-tokens").textContent = m.llm.totalTokens.toLocaleString();
+    document.getElementById("d-llm-reqs").textContent = m.llm.requests;
+    document.getElementById("d-llm-latency").textContent = m.llm.avgLatencyMs;
+    document.getElementById("d-llm-cost").textContent = m.llm.estimatedCost;
+
+    document.getElementById("d-tts-chars").textContent = m.tts.totalChars.toLocaleString();
+    document.getElementById("d-tts-reqs").textContent = m.tts.requests;
+    document.getElementById("d-tts-latency").textContent = m.tts.avgLatencyMs;
+    document.getElementById("d-tts-bytes").textContent = Math.round(m.tts.totalAudioBytes / 1024);
+    document.getElementById("d-tts-cost").textContent = m.tts.estimatedCost;
+
+    document.getElementById("d-mcp-calls").textContent = m.mcp.totalCalls;
+    document.getElementById("d-mcp-errors").textContent = m.mcp.totalErrors;
+    const toolList = Object.entries(m.mcp.tools)
+      .map(([name, t]) => `${name}: ${t.calls} (${t.avgLatencyMs}ms)`)
+      .join(", ");
+    document.getElementById("d-mcp-tools").textContent = toolList || "No calls yet";
+
+    document.getElementById("d-twilio-calls").textContent = m.twilio.totalCalls;
+    document.getElementById("d-twilio-turns").textContent = m.twilio.totalTurns;
+    document.getElementById("d-twilio-cost").textContent = m.twilio.estimatedCost;
+
+    document.getElementById("d-sessions-browser").textContent = m.sessions.browser;
+    document.getElementById("d-sessions-phone").textContent = m.sessions.phone;
+    document.getElementById("d-total-cost").textContent = m.totalEstimatedCost;
+  } catch {}
+}
+
 // Initial greeting
 addSystemMessage("Hello! Click the mic button or type a message to start chatting.");

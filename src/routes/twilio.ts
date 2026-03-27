@@ -2,6 +2,7 @@ import { Router } from "express";
 import { processMessage } from "../agent.js";
 import { textToSpeech } from "../tts.js";
 import { config } from "../config.js";
+import { metrics } from "../metrics.js";
 import express from "express";
 
 export const twilioRouter = Router();
@@ -21,6 +22,8 @@ twilioRouter.post("/incoming", (req, res) => {
   const callSid = req.body.CallSid || "unknown";
   const from = req.body.From || "unknown";
   console.log(`[Twilio] Incoming call from ${from} (${callSid})`);
+  metrics.trackTwilioCall();
+  metrics.trackSession("phone", callSid);
 
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -55,6 +58,7 @@ twilioRouter.post("/gather", async (req, res) => {
   }
 
   console.log(`[Twilio] Speech: "${speechResult}" (call: ${callSid})`);
+  metrics.trackTwilioTurn();
 
   // Start processing in background
   processInBackground(callSid, speechResult, req);

@@ -2,6 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { config } from "./config.js";
+import { metrics } from "./metrics.js";
 
 import type { ChatCompletionTool } from "openai/resources/chat/completions";
 
@@ -58,13 +59,23 @@ export function getToolsAsOpenAIFormat(): ChatCompletionTool[] {
 
 export async function callTool(name: string, args: Record<string, unknown>): Promise<string> {
   console.log(`[MCP] Calling tool: ${name}`, JSON.stringify(args));
-  const result = await client.callTool({ name, arguments: args });
-  const text = (result.content as Array<{ type: string; text?: string }>)
-    .filter((block) => block.type === "text" && block.text)
-    .map((block) => block.text!)
-    .join("\n");
-  console.log(`[MCP] Tool result (${text.length} chars):`, text.substring(0, 200));
-  return text;
+  const start = Date.now();
+  let error = false;
+
+  try {
+    const result = await client.callTool({ name, arguments: args });
+    const text = (result.content as Array<{ type: string; text?: string }>)
+      .filter((block) => block.type === "text" && block.text)
+      .map((block) => block.text!)
+      .join("\n");
+    console.log(`[MCP] Tool result (${text.length} chars):`, text.substring(0, 200));
+    return text;
+  } catch (err) {
+    error = true;
+    throw err;
+  } finally {
+    metrics.trackMcpTool(name, Date.now() - start, error);
+  }
 }
 
 export function getToolCount(): number {
