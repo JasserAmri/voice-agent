@@ -69,6 +69,12 @@ export async function callTool(name: string, args: Record<string, unknown>): Pro
       .map((block) => block.text!)
       .join("\n");
     console.log(`[MCP] Tool result (${text.length} chars):`, text.substring(0, 200));
+
+    // Post-process large availability results to extract key fields
+    if (name === "get-availability" && text.length > 5000) {
+      return summarizeAvailability(text);
+    }
+
     return text;
   } catch (err) {
     error = true;
@@ -80,4 +86,40 @@ export async function callTool(name: string, args: Record<string, unknown>): Pro
 
 export function getToolCount(): number {
   return tools.length;
+}
+
+/**
+ * Summarize large availability responses to essential fields only.
+ * Preserves room names, prices, bookUrl, and key details while
+ * dropping images, descriptions, and other verbose data.
+ */
+function summarizeAvailability(text: string): string {
+  try {
+    const data = JSON.parse(text);
+    if (!data.availability || !Array.isArray(data.availability)) return text;
+
+    const rooms = data.availability.map((room: any) => ({
+      name: room.name,
+      price: room.price,
+      currency: room.currency || "EUR",
+      bookUrl: room.bookUrl,
+      totalRoomsAvailable: room.totalRoomsAvailable,
+      maxOccupancy: room.maxOccupancy,
+      bedType: room.bedType,
+      boardType: room.boardType,
+      cancellationPolicy: room.cancellationPolicy,
+    }));
+
+    const summary = {
+      _status: data._status,
+      roomCount: rooms.length,
+      rooms,
+    };
+
+    const result = JSON.stringify(summary, null, 2);
+    console.log(`[MCP] Availability summarized: ${text.length} → ${result.length} chars, ${rooms.length} rooms`);
+    return result;
+  } catch {
+    return text;
+  }
 }

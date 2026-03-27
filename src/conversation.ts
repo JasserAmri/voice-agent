@@ -1,7 +1,7 @@
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 const MAX_MESSAGES = 30;
-const MAX_TOOL_RESULT_CHARS = 3000; // Truncate large tool results to save tokens
+const MAX_TOOL_RESULT_CHARS = 8000; // Truncate large tool results to save tokens
 
 const store = new Map<string, ChatCompletionMessageParam[]>();
 
