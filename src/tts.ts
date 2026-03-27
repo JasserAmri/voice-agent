@@ -2,8 +2,8 @@ import { config } from "./config.js";
 
 const ELEVENLABS_API = "https://api.elevenlabs.io/v1";
 
-// Rachel — warm, natural, conversational female voice
-const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
+// Sarah — mature, reassuring, confident (premade, works on free tier)
+const DEFAULT_VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
 
 interface VoiceSettings {
   stability: number;
@@ -34,7 +34,7 @@ export async function textToSpeech(
       },
       body: JSON.stringify({
         text,
-        model_id: "eleven_turbo_v2_5",
+        model_id: "eleven_multilingual_v2",
         voice_settings: VOICE_SETTINGS,
       }),
     }
